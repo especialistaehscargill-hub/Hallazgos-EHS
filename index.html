@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cargill | Food Latam EHS - Hallazgos de Planta</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para analítica interactiva -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS (xlsx) para exportación a Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cargill-green: #007A33;
+      --cargill-dark-green: #005A25;
+      --cargill-light-green: #E6F4EC;
+      --cargill-gold: #D9822B;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F4F7F5;
+      color: #1E293B;
+    }
+    .cargill-gradient {
+      background: linear-gradient(135deg, #004D20 0%, #007A33 55%, #0B9444 100%);
+    }
+    @keyframes subtlePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .logo-float {
+      animation: subtlePulse 5s ease-in-out infinite;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .print-full { width: 100% !important; max-width: 100% !important; box-shadow: none !important; border: none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ==================== PORTAL DE INICIO DE SESIÓN OBLIGATORIO ==================== -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 cargill-gradient">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-emerald-900/20">
+      <div class="bg-[#004D20] p-6 text-white text-center relative overflow-hidden">
+        <div class="inline-flex items-center gap-3 mb-2 logo-float">
+          <!-- Logotipo Corporativo Cargill SVG -->
+          <svg class="w-11 h-11" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" rx="14" fill="#FFFFFF"/>
+            <path d="M16 42C16 27 28 17 48 16C46 34 36 46 20 46C17.8 46 16 44.2 16 42Z" fill="#007A33"/>
+            <path d="M22 41C28 33 35 26 45 20" stroke="#A7F3D0" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <div class="text-left">
+            <span class="text-2xl font-extrabold tracking-tight block leading-none">Cargill<sup class="text-xs font-semibold">®</sup></span>
+            <span class="text-xs uppercase tracking-widest text-emerald-200 font-semibold">Food Latam EHS</span>
+          </div>
+        </div>
+        <h1 class="text-lg font-bold mt-2">Hallazgos de Planta</h1>
+        <p class="text-xs text-emerald-100/90 mt-1">Control Operativo de Seguridad y Salud en el Trabajo</p>
+      </div>
+
+      <form id="login-form" class="p-6 space-y-4">
+        <div id="db-connection-badge" class="flex items-center justify-center gap-2 text-xs font-medium py-1.5 px-3 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+          <span>Conectando con servidor en línea...</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Localidad Operativa</label>
+          <select id="login-location" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-[#007A33]">
+            <option value="Incubadora Mahates">Incubadora Mahates</option>
+            <option value="Granjas Manantiales">Granjas Manantiales</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Usuario</label>
+          <input id="login-username" type="text" required autocomplete="username" placeholder="Ingrese su usuario"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#007A33]" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Contraseña</label>
+          <div class="relative">
+            <input id="login-password" type="password" required autocomplete="current-password" placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-[#007A33]" />
+            <button type="button" id="toggle-login-pwd" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-semibold">
+              Ver
+            </button>
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold"></div>
+
+        <button type="submit" id="login-submit-btn"
+          class="w-full py-3 rounded-xl bg-[#007A33] hover:bg-[#005A25] text-white font-bold text-sm shadow-lg shadow-emerald-900/20 transition">
+          Ingresar al Sistema EHS
+        </button>
+      </form>
+
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-center">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Food Latam Caribe</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== APLICACIÓN PRINCIPAL ==================== -->
+  <div id="app-shell" class="hidden flex-1 flex flex-col">
+
+    <!-- Banner Superior Corporativo -->
+    <header class="cargill-gradient text-white shadow-lg no-print">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <div class="logo-float shrink-0">
+            <svg class="w-12 h-12" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="14" fill="#FFFFFF"/>
+              <path d="M16 42C16 27 28 17 48 16C46 34 36 46 20 46C17.8 46 16 44.2 16 42Z" fill="#007A33"/>
+              <path d="M22 41C28 33 35 26 45 20" stroke="#A7F3D0" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl font-extrabold tracking-tight">Cargill<sup class="text-xs">®</sup></span>
+              <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-white/15 rounded-full">Food Latam EHS</span>
+              <span id="live-sync-pill" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-950/60 border border-emerald-300/30 rounded-full text-emerald-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> En línea
+              </span>
+            </div>
+            <h1 class="text-lg sm:text-xl font-bold leading-snug">Hallazgos de Planta — <span id="header-location-label" class="underline decoration-emerald-300">Incubadora Mahates</span></h1>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Selector rápido de localidad para Admin o multi-localidad -->
+          <div id="admin-location-switcher-wrap" class="hidden">
+            <select id="active-location-select" class="bg-white/15 text-white border border-white/30 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none">
+              <option value="Incubadora Mahates" class="text-slate-900">Incubadora Mahates</option>
+              <option value="Granjas Manantiales" class="text-slate-900">Granjas Manantiales</option>
+            </select>
+          </div>
+
+          <div class="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs">
+            <span class="text-emerald-200">Usuario:</span>
+            <strong id="header-user-name" class="font-bold">Admin</strong>
+            <span id="header-user-role" class="ml-1 px-1.5 py-0.5 bg-amber-400 text-slate-900 rounded text-[10px] font-extrabold uppercase">ADMIN</span>
+          </div>
+
+          <button id="logout-btn" class="px-3.5 py-2 rounded-xl bg-red-600/90 hover:bg-red-700 text-white text-xs font-bold transition shadow">
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Navegación por Pestañas -->
+      <nav class="bg-black/20 border-t border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto gap-1 py-2">
+          <button data-tab="dashboard" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-[#005A25] shadow">
+            Tablero y Hallazgos
+          </button>
+          <button data-tab="register" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:bg-white/15">
+            + Registrar Hallazgo
+          </button>
+          <button data-tab="analytics" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:bg-white/15">
+            Analítica e Indicadores
+          </button>
+          <button id="tab-btn-users" data-tab="users" class="nav-tab hidden px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-amber-200 hover:bg-white/15">
+            Administración de Usuarios
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Alerta Crítica Salvadores de Vida / SLA Vencidos -->
+    <div id="critical-banner" class="hidden bg-red-600 text-white px-4 py-2.5 text-xs sm:text-sm font-semibold shadow no-print">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 bg-white text-red-700 rounded font-extrabold text-xs uppercase">ALERTA CRÍTICA</span>
+          <span id="critical-banner-text">Existen hallazgos vencidos o asociados a los 12 Salvadores de Vida que requieren atención inmediata.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      <!-- ==================== VISTA 1: TABLERO Y LISTADO DE HALLAZGOS ==================== -->
+      <section id="view-dashboard" class="space-y-6">
+        <!-- Tarjetas KPI -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <p class="text-xs font-bold uppercase text-slate-400">Total Localidad</p>
+            <p id="kpi-total" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <p class="text-xs font-bold uppercase text-amber-600">Abiertos</p>
+            <p id="kpi-open" class="text-2xl font-extrabold text-amber-600 mt-1">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <p class="text-xs font-bold uppercase text-red-600">Vencidos (SLA)</p>
+            <p id="kpi-overdue" class="text-2xl font-extrabold text-red-600 mt-1">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <p class="text-xs font-bold uppercase text-emerald-700">Cerrados</p>
+            <p id="kpi-closed" class="text-2xl font-extrabold text-emerald-700 mt-1">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-2 lg:col-span-1">
+            <p class="text-xs font-bold uppercase text-purple-700">Salvadores de Vida</p>
+            <p id="kpi-lifesavers" class="text-2xl font-extrabold text-purple-700 mt-1">0</p>
+          </div>
+        </div>
+
+        <!-- Filtros y Exportación -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 no-print">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <input id="filter-search" type="text" placeholder="Buscar por área, descripción o responsable..."
+              class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-[#007A33]" />
+            <select id="filter-status" class="px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold">
+              <option value="ALL">Todos los estados</option>
+              <option value="Abierto">Abiertos</option>
+              <option value="Vencido">Vencidos</option>
+              <option value="Cerrado">Cerrados</option>
+            </select>
+            <select id="filter-type" class="px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold">
+              <option value="ALL">Todos los tipos SLA</option>
+              <option value="Tipo A">Tipo A (24 Horas)</option>
+              <option value="Tipo B">Tipo B (15 Días)</option>
+              <option value="Tipo C">Tipo C (1 Mes)</option>
+            </select>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="export-excel-btn" class="px-4 py-2 rounded-xl bg-[#007A33] hover:bg-[#005A25] text-white text-xs font-bold shadow transition">
+              Exportar Excel (.xlsx)
+            </button>
+            <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow transition">
+              Imprimir / Reporte PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista de Hallazgos -->
+        <div id="findings-list" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+      </section>
+
+      <!-- ==================== VISTA 2: REGISTRAR NUEVO HALLAZGO ==================== -->
+      <section id="view-register" class="hidden">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden max-w-4xl mx-auto">
+          <div class="bg-[#005A25] px-6 py-4 text-white">
+            <h2 class="text-lg font-bold">Registrar Nuevo Hallazgo EHS</h2>
+            <p class="text-xs text-emerald-100">Localidad activa: <strong id="form-location-display">Incubadora Mahates</strong></p>
+          </div>
+
+          <form id="finding-form" class="p-6 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Área en TEXTO LIBRE (sin lista desplegable) -->
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Área del Hallazgo *</label>
+                <input id="f-area" type="text" required placeholder="Escriba el área exacta (ej. Sala de Nacedoras, Calderas, Taller...)"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#007A33]" />
+              </div>
+
+              <!-- Clasificación SLA -->
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Clasificación y Plazo SLA *</label>
+                <select id="f-type" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#007A33]">
+                  <option value="Tipo A">Tipo A — Crítico / Inmediato (24 Horas)</option>
+                  <option value="Tipo B" selected>Tipo B — Moderado / Estructural (15 Días)</option>
+                  <option value="Tipo C">Tipo C — Preventivo / Mejora (1 Mes / 30 Días)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 12 Salvadores de Vida con pictogramas SVG -->
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-600 mb-2">Salvador de Vida Asociado (12 Reglas Cargill) *</label>
+              <div id="lifesaver-selector-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
+              <input type="hidden" id="f-lifesaver" value="No Aplica / Condición General" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Descripción Detallada del Hallazgo *</label>
+              <textarea id="f-description" rows="3" required placeholder="Describa la condición o acto inseguro detectado..."
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#007A33]"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Responsable Asignado *</label>
+                <input id="f-responsible" type="text" required placeholder="Nombre del responsable de cierre"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#007A33]" />
+              </div>
+
+              <!-- Correo únicamente del responsable -->
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Correo del Responsable *</label>
+                <input id="f-responsible-email" type="email" required placeholder="responsable@cargill.com"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#007A33]" />
+              </div>
+            </div>
+
+            <!-- Fotografía de Apertura -->
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Evidencia Fotográfica de Apertura *</label>
+              <input id="f-photo-open" type="file" accept="image/*" capture="environment" required
+                class="block w-full text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#E6F4EC] file:text-[#007A33] hover:file:bg-emerald-100" />
+              <img id="f-photo-open-preview" class="hidden mt-3 h-40 rounded-xl object-cover border border-slate-300" alt="Vista previa apertura" />
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              <button type="button" onclick="switchTab('dashboard')" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50">
+                Cancelar
+              </button>
+              <button type="submit" id="submit-finding-btn" class="px-6 py-2.5 rounded-xl bg-[#007A33] hover:bg-[#005A25] text-white text-xs font-bold shadow-lg transition">
+                Guardar Hallazgo y Notificar Responsable
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ==================== VISTA 3: ANALÍTICA E INDICADORES ==================== -->
+      <section id="view-analytics" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">Distribución por Estado</h3>
+            <div class="h-64"><canvas id="chart-status"></canvas></div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">Hallazgos por Clasificación SLA</h3>
+            <div class="h-64"><canvas id="chart-type"></canvas></div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">Top Salvadores de Vida / Reglas Críticas</h3>
+            <div class="h-72"><canvas id="chart-lifesavers"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VISTA 4: ADMINISTRACIÓN DE USUARIOS (SOLO ADMIN) ==================== -->
+      <section id="view-users" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-slate-900 px-6 py-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold">Administración de Usuarios y Accesos por Localidad</h2>
+              <p class="text-xs text-slate-300">Exclusivo Administrador Maestro (Admin) — Sincronizado en tiempo real</p>
+            </div>
+          </div>
+
+          <form id="user-form" class="p-6 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+            <input type="hidden" id="u-edit-id" value="" />
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Usuario *</label>
+              <input id="u-username" type="text" required placeholder="ej. jperez"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Contraseña *</label>
+              <input id="u-password" type="text" required placeholder="Contraseña"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Nombre Completo *</label>
+              <input id="u-fullname" type="text" required placeholder="Nombre y Apellido"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Localidad Autorizada *</label>
+              <select id="u-location" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white">
+                <option value="Incubadora Mahates">Incubadora Mahates</option>
+                <option value="Granjas Manantiales">Granjas Manantiales</option>
+                <option value="ALL">Ambas Localidades</option>
+              </select>
+            </div>
+            <div class="flex gap-2">
+              <button type="submit" id="u-submit-btn" class="flex-1 py-2 px-3 rounded-xl bg-[#007A33] hover:bg-[#005A25] text-white text-xs font-bold shadow">
+                Guardar Usuario
+              </button>
+              <button type="button" id="u-cancel-edit-btn" class="hidden py-2 px-3 rounded-xl bg-slate-300 text-slate-800 text-xs font-bold">
+                Cancelar
+              </button>
+            </div>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200">
+                  <th class="py-3 px-4">Usuario</th>
+                  <th class="py-3 px-4">Nombre</th>
+                  <th class="py-3 px-4">Contraseña</th>
+                  <th class="py-3 px-4">Localidad</th>
+                  <th class="py-3 px-4">Estado</th>
+                  <th class="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body" class="divide-y divide-slate-200 text-xs"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- MODAL DE CIERRE DE HALLAZGO -->
+    <div id="close-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
+        <div class="bg-[#007A33] px-5 py-4 text-white flex items-center justify-between">
+          <h3 class="font-bold text-base">Cerrar Hallazgo EHS</h3>
+          <button type="button" onclick="closeModal()" class="text-white/80 hover:text-white font-bold text-lg">&times;</button>
+        </div>
+        <form id="close-finding-form" class="p-5 space-y-4">
+          <input type="hidden" id="c-finding-id" />
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Causa Raíz EHS *</label>
+            <select id="c-root-cause" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold">
+              <option value="Falta de guarda / protección física">Falta de guarda / protección física</option>
+              <option value="Condición subestándar de infraestructura o equipo">Condición subestándar de infraestructura o equipo</option>
+              <option value="Incumplimiento de procedimiento / estándar SST">Incumplimiento de procedimiento / estándar SST</option>
+              <option value="Falta de señalización o demarcación">Falta de señalización o demarcación</option>
+              <option value="Orden y aseo deficiente">Orden y aseo deficiente</option>
+              <option value="Falta de EPP o uso inadecuado">Falta de EPP o uso inadecuado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Acción Correctiva Ejecutada *</label>
+            <textarea id="c-comment" rows="3" required placeholder="Describa la solución implementada..."
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Fotografía de Cierre (Después) *</label>
+            <input id="c-photo-close" type="file" accept="image/*" capture="environment" required
+              class="block w-full text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#E6F4EC] file:text-[#007A33]" />
+            <img id="c-photo-close-preview" class="hidden mt-2 h-36 rounded-xl object-cover border border-slate-300" alt="Vista previa cierre" />
+          </div>
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold">Cancelar</button>
+            <button type="submit" id="confirm-close-btn" class="px-5 py-2 rounded-xl bg-[#007A33] hover:bg-[#005A25] text-white text-xs font-bold">
+              Confirmar Cierre y Notificar Responsable
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Pie de página estricto Food Latam Caribe -->
+    <footer class="bg-slate-900 text-slate-300 py-4 px-6 mt-auto border-t border-slate-800">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+        <span class="font-bold tracking-wider uppercase text-white">Food Latam Caribe</span>
+        <span class="text-slate-400">Cargill® EHS — Gestión Digital de Hallazgos de Planta</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ==================== FIREBASE REALTIME DATABASE SDK ==================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB8YoGHI6d7m_qs-8JJN-FwpDZ6EVXwSlo",
+      authDomain: "hallazgos-ehs.firebaseapp.com",
+      databaseURL: "https://hallazgos-ehs-default-rtdb.firebaseio.com",
+      projectId: "hallazgos-ehs",
+      storageBucket: "hallazgos-ehs.firebasestorage.app",
+      messagingSenderId: "236068565442",
+      appId: "1:236068565442:web:15cda406c381041034e65b",
+      measurementId: "G-Z1TF45PJ4M"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Estado en memoria sincronizado 100% con Firebase (sin localStorage)
+    let usersMap = {};
+    let findingsMap = {};
+    let currentUser = null;
+    let activeLocation = "Incubadora Mahates";
+    let charts = {};
+
+    // Los 12 Salvadores de Vida de Cargill con iconos SVG
+    const LIFE_SAVERS = [
+      { id: "No Aplica / Condición General", label: "Condición General EHS", color: "#475569", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` },
+      { id: "1. Trabajo en Alturas", label: "1. Trabajo en Alturas", color: "#DC2626", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18m-4-14h8m-8 5h8m-8 5h8"/></svg>` },
+      { id: "2. Bloqueo y Etiquetado (LOTO)", label: "2. Bloqueo y Etiquetado (LOTO)", color: "#B91C1C", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>` },
+      { id: "3. Espacios Confinados", label: "3. Espacios Confinados", color: "#991B1B", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>` },
+      { id: "4. Seguridad Eléctrica", label: "4. Seguridad Eléctrica", color: "#D97706", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>` },
+      { id: "5. Izaje de Cargas", label: "5. Izaje de Cargas", color: "#B45309", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v9a3 3 0 103 3"/><path d="M5 21h14"/></svg>` },
+      { id: "6. Resguardo de Máquinas", label: "6. Resguardo de Máquinas", color: "#007A33", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>` },
+      { id: "7. Seguridad Vial y Montacargas", label: "7. Seguridad Vial y Montacargas", color: "#0369A1", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="13" height="6" rx="1"/><circle cx="7" cy="18" r="2"/><circle cx="14" cy="18" r="2"/><path d="M16 13h4l1 4h-5"/></svg>` },
+      { id: "8. Trabajo en Caliente", label: "8. Trabajo en Caliente", color: "#EA580C", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2c1 4-2 6-2 10a4 4 0 008 0c0-3-2-5-2-8 2 2 4 5 4 8a8 8 0 11-16 0c0-4 3-7 8-10z"/></svg>` },
+      { id: "9. Sustancias Químicas Peligrosas", label: "9. Sustancias Químicas Peligrosas", color: "#7C3AED", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 3h6m-5 0v5l-5 9a2 2 0 001.7 3h10.6a2 2 0 001.7-3l-5-9V3"/></svg>` },
+      { id: "10. Excavaciones y Zanjas", label: "10. Excavaciones y Zanjas", color: "#854D0E", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17h4l3-6h4l3 6h4"/></svg>` },
+      { id: "11. Atmósferas Explosivas / Polvo Combustible", label: "11. Polvo Combustible / Atmósferas", color: "#BE123C", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>` },
+      { id: "12. Permisos de Trabajo Seguro", label: "12. Permisos de Trabajo Seguro", color: "#0F766E", icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>` }
+    ];
+
+    // Sembrar cuenta maestra Admin / AdminCargill en Firebase si no existe aún
+    async function ensureMasterAdmin() {
+      try {
+        const adminRef = ref(db, "users/Admin");
+        const snap = await get(adminRef);
+        if (!snap.exists()) {
+          await set(adminRef, {
+            username: "Admin",
+            password: "AdminCargill",
+            fullName: "Administrador Maestro EHS",
+            location: "ALL",
+            role: "ADMIN",
+            active: true,
+            createdAt: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.error("Error inicializando Admin en Firebase:", err);
+      }
+    }
+
+    // Escucha en tiempo real de usuarios
+    onValue(ref(db, "users"), (snapshot) => {
+      usersMap = snapshot.val() || {};
+      const badge = document.getElementById("db-connection-badge");
+      if (badge) {
+        badge.className = "flex items-center justify-center gap-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Conectado en línea (Firebase Tiempo Real)</span>`;
+      }
+      if (currentUser && currentUser.role === "ADMIN") {
+        renderUsersTable();
+      }
+    }, (error) => {
+      const badge = document.getElementById("db-connection-badge");
+      if (badge) {
+        badge.className = "flex items-center justify-center gap-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-50 text-red-800 border border-red-200";
+        badge.innerHTML = `<span>Error de conexión con servidor: ${error.message}</span>`;
+      }
+    });
+
+    // Escucha en tiempo real de hallazgos
+    onValue(ref(db, "findings"), (snapshot) => {
+      findingsMap = snapshot.val() || {};
+      if (currentUser) {
+        renderDashboard();
+        renderAnalytics();
+      }
+    });
+
+    ensureMasterAdmin();
+
+    // ==================== LOGIN Y CONTROL DE ACCESO ====================
+    document.getElementById("toggle-login-pwd").addEventListener("click", () => {
+      const pwd = document.getElementById("login-password");
+      pwd.type = pwd.type === "password" ? "text" : "password";
+    });
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const usernameInput = document.getElementById("login-username").value.trim();
+      const passwordInput = document.getElementById("login-password").value;
+      const selectedLoc = document.getElementById("login-location").value;
+      const errBox = document.getElementById("login-error");
+      errBox.classList.add("hidden");
+
+      // Asegurar lectura fresca por si acaba de crearse en otro equipo
+      if (!Object.keys(usersMap).length) {
+        const snap = await get(ref(db, "users"));
+        usersMap = snap.val() || {};
+      }
+
+      // Búsqueda insensible a mayúsculas para el usuario, exacta para contraseña
+      const matchedUser = Object.values(usersMap).find(
+        (u) => u && u.username && u.username.toLowerCase() === usernameInput.toLowerCase()
+      );
+
+      if (!matchedUser || matchedUser.password !== passwordInput) {
+        errBox.textContent = "Usuario o contraseña incorrectos. Verifique sus credenciales.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      if (matchedUser.active === false) {
+        errBox.textContent = "Esta cuenta se encuentra desactivada. Contacte al Administrador EHS.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      if (matchedUser.location !== "ALL" && matchedUser.location !== selectedLoc) {
+        errBox.textContent = `Su usuario solo tiene acceso autorizado a: ${matchedUser.location}.`;
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      currentUser = matchedUser;
+      activeLocation = selectedLoc;
+
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("app-shell").classList.remove("hidden");
+
+      document.getElementById("header-user-name").textContent = currentUser.fullName || currentUser.username;
+      const roleBadge = document.getElementById("header-user-role");
+      const usersTabBtn = document.getElementById("tab-btn-users");
+      const locSwitcher = document.getElementById("admin-location-switcher-wrap");
+
+      if (currentUser.role === "ADMIN" || currentUser.username === "Admin") {
+        roleBadge.textContent = "ADMIN";
+        roleBadge.classList.remove("hidden");
+        usersTabBtn.classList.remove("hidden");
+        locSwitcher.classList.remove("hidden");
+        document.getElementById("active-location-select").value = activeLocation;
+        renderUsersTable();
+      } else {
+        roleBadge.textContent = "EHS";
+        usersTabBtn.classList.add("hidden");
+        if (currentUser.location === "ALL") {
+          locSwitcher.classList.remove("hidden");
+          document.getElementById("active-location-select").value = activeLocation;
+        } else {
+          locSwitcher.classList.add("hidden");
+        }
+      }
+
+      updateLocationLabels();
+      renderDashboard();
+      renderAnalytics();
+    });
+
+    document.getElementById("active-location-select").addEventListener("change", (e) => {
+      activeLocation = e.target.value;
+      updateLocationLabels();
+      renderDashboard();
+      renderAnalytics();
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      currentUser = null;
+      document.getElementById("login-password").value = "";
+      document.getElementById("app-shell").classList.add("hidden");
+      document.getElementById("login-screen").classList.remove("hidden");
+      switchTab("dashboard");
+    });
+
+    function updateLocationLabels() {
+      document.getElementById("header-location-label").textContent = activeLocation;
+      document.getElementById("form-location-display").textContent = activeLocation;
+    }
+
+    // ==================== NAVEGACIÓN DE PESTAÑAS ====================
+    window.switchTab = function(tabName) {
+      ["dashboard", "register", "analytics", "users"].forEach((t) => {
+        document.getElementById(`view-${t}`).classList.toggle("hidden", t !== tabName);
+      });
+      document.querySelectorAll(".nav-tab").forEach((btn) => {
+        const isActive = btn.dataset.tab === tabName;
+        btn.className = isActive
+          ? "nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-[#005A25] shadow"
+          : "nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:bg-white/15";
+      });
+      if (tabName === "analytics") renderAnalytics();
+    };
+
+    document.querySelectorAll(".nav-tab").forEach((btn) => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    });
+
+    // ==================== SELECTOR DE 12 SALVADORES DE VIDA ====================
+    const lsGrid = document.getElementById("lifesaver-selector-grid");
+    LIFE_SAVERS.forEach((ls, idx) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.dataset.lsId = ls.id;
+      card.className = `ls-card flex items-center gap-2.5 p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+        idx === 0 ? "border-[#007A33] bg-[#E6F4EC] text-[#005A25] ring-2 ring-[#007A33]/30" : "border-slate-200 hover:border-slate-300 text-slate-700"
+      }`;
+      card.innerHTML = `<span style="color:${ls.color}" class="shrink-0">${ls.icon}</span><span class="leading-tight">${ls.label}</span>`;
+      card.addEventListener("click", () => {
+        document.getElementById("f-lifesaver").value = ls.id;
+        document.querySelectorAll(".ls-card").forEach((c) => {
+          c.className = "ls-card flex items-center gap-2.5 p-2.5 rounded-xl border text-left text-xs font-semibold transition border-slate-200 hover:border-slate-300 text-slate-700";
+        });
+        card.className = "ls-card flex items-center gap-2.5 p-2.5 rounded-xl border text-left text-xs font-semibold transition border-[#007A33] bg-[#E6F4EC] text-[#005A25] ring-2 ring-[#007A33]/30";
+      });
+      lsGrid.appendChild(card);
+    });
+
+    // ==================== COMPRESIÓN DE IMAGEN EN CANVAS ====================
+    function compressImage(file, maxWidth = 800, quality = 0.68) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    let openPhotoBase64 = "";
+    document.getElementById("f-photo-open").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      openPhotoBase64 = await compressImage(file);
+      const prev = document.getElementById("f-photo-open-preview");
+      prev.src = openPhotoBase64;
+      prev.classList.remove("hidden");
+    });
+
+    let closePhotoBase64 = "";
+    document.getElementById("c-photo-close").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      closePhotoBase64 = await compressImage(file);
+      const prev = document.getElementById("c-photo-close-preview");
+      prev.src = closePhotoBase64;
+      prev.classList.remove("hidden");
+    });
+
+    // Cálculo de fecha límite según Tipo A (24h), Tipo B (15d), Tipo C (30d)
+    function computeDueDate(type, createdIso) {
+      const d = new Date(createdIso);
+      if (type === "Tipo A") d.setHours(d.getHours() + 24);
+      else if (type === "Tipo B") d.setDate(d.getDate() + 15);
+      else d.setDate(d.getDate() + 30);
+      return d.toISOString();
+    }
+
+    // ==================== GUARDAR NUEVO HALLAZGO EN FIREBASE ====================
+    document.getElementById("finding-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submit-finding-btn");
+      btn.disabled = true;
+      btn.textContent = "Guardando en la nube...";
+
+      try {
+        const id = "HAL-" + Date.now();
+        const nowIso = new Date().toISOString();
+        const type = document.getElementById("f-type").value;
+        const area = document.getElementById("f-area").value.trim();
+        const lifesaver = document.getElementById("f-lifesaver").value;
+        const description = document.getElementById("f-description").value.trim();
+        const responsible = document.getElementById("f-responsible").value.trim();
+        const responsibleEmail = document.getElementById("f-responsible-email").value.trim();
+
+        const record = {
+          id,
+          location: activeLocation,
+          area,
+          type,
+          lifesaver,
+          description,
+          responsible,
+          responsibleEmail,
+          status: "Abierto",
+          createdAt: nowIso,
+          dueDate: computeDueDate(type, nowIso),
+          createdBy: currentUser.username,
+          photoOpen: openPhotoBase64,
+          closedAt: null,
+          rootCause: null,
+          closeComment: null,
+          photoClose: null
+        };
+
+        await set(ref(db, `findings/${id}`), record);
+
+        // Preparar notificación por correo únicamente al responsable
+        const subject = encodeURIComponent(`[Cargill EHS - ${activeLocation}] Nuevo Hallazgo ${type} en ${area}`);
+        const body = encodeURIComponent(
+          `Hola ${responsible},\n\nSe ha registrado un nuevo hallazgo de seguridad asignado a su gestión:\n` +
+          `• Localidad: ${activeLocation}\n` +
+          `• Área: ${area}\n` +
+          `• Clasificación: ${type}\n` +
+          `• Salvador de Vida: ${lifesaver}\n` +
+          `• Fecha límite SLA: ${new Date(record.dueDate).toLocaleString("es-CO")}\n` +
+          `• Descripción: ${description}\n\nFood Latam Caribe — Cargill EHS`
+        );
+        window.open(`mailto:${responsibleEmail}?subject=${subject}&body=${body}`, "_blank");
+
+        e.target.reset();
+        openPhotoBase64 = "";
+        document.getElementById("f-photo-open-preview").classList.add("hidden");
+        switchTab("dashboard");
+      } catch (err) {
+        alert("Error al guardar el hallazgo en línea: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Guardar Hallazgo y Notificar Responsable";
+      }
+    });
+
+    // ==================== RENDERIZADO DE TABLERO Y TARJETAS ====================
+    function getEffectiveStatus(item) {
+      if (item.status === "Cerrado") return "Cerrado";
+      return new Date() > new Date(item.dueDate) ? "Vencido" : "Abierto";
+    }
+
+    function renderDashboard() {
+      const search = document.getElementById("filter-search").value.toLowerCase();
+      const statusFilter = document.getElementById("filter-status").value;
+      const typeFilter = document.getElementById("filter-type").value;
+
+      const locationItems = Object.values(findingsMap)
+        .filter((f) => f && f.location === activeLocation)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      let openCount = 0, overdueCount = 0, closedCount = 0, lsCount = 0;
+
+      locationItems.forEach((item) => {
+        const eff = getEffectiveStatus(item);
+        if (eff === "Cerrado") closedCount++;
+        else if (eff === "Vencido") { overdueCount++; openCount++; }
+        else openCount++;
+
+        if (item.lifesaver && !item.lifesaver.startsWith("No Aplica")) lsCount++;
+      });
+
+      document.getElementById("kpi-total").textContent = locationItems.length;
+      document.getElementById("kpi-open").textContent = openCount;
+      document.getElementById("kpi-overdue").textContent = overdueCount;
+      document.getElementById("kpi-closed").textContent = closedCount;
+      document.getElementById("kpi-lifesavers").textContent = lsCount;
+
+      const critBanner = document.getElementById("critical-banner");
+      const openLifeSavers = locationItems.filter(
+        (i) => getEffectiveStatus(i) !== "Cerrado" && i.lifesaver && !i.lifesaver.startsWith("No Aplica")
+      ).length;
+      if (overdueCount > 0 || openLifeSavers > 0) {
+        critBanner.classList.remove("hidden");
+        document.getElementById("critical-banner-text").textContent =
+          `Atención en ${activeLocation}: ${overdueCount} hallazgo(s) vencido(s) y ${openLifeSavers} alerta(s) activa(s) de Salvadores de Vida.`;
+      } else {
+        critBanner.classList.add("hidden");
+      }
+
+      const filtered = locationItems.filter((item) => {
+        const eff = getEffectiveStatus(item);
+        if (statusFilter !== "ALL" && eff !== statusFilter) return false;
+        if (typeFilter !== "ALL" && item.type !== typeFilter) return false;
+        if (
+          search &&
+          !`${item.area} ${item.description} ${item.responsible} ${item.lifesaver}`.toLowerCase().includes(search)
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      const listEl = document.getElementById("findings-list");
+      if (!filtered.length) {
+        listEl.innerHTML = `<div class="col-span-full bg-white p-10 rounded-2xl border border-dashed border-slate-300 text-center text-slate-500 text-sm">
+          No hay hallazgos registrados con los filtros actuales en <strong>${activeLocation}</strong>.
+        </div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered
+        .map((item) => {
+          const eff = getEffectiveStatus(item);
+          const badgeClass =
+            eff === "Cerrado"
+              ? "bg-emerald-100 text-emerald-800"
+              : eff === "Vencido"
+              ? "bg-red-100 text-red-800"
+              : "bg-amber-100 text-amber-800";
+
+          const isLS = item.lifesaver && !item.lifesaver.startsWith("No Aplica");
+
+          return `
+            <article class="bg-white rounded-2xl shadow-sm border ${isLS ? "border-red-300" : "border-slate-200"} overflow-hidden flex flex-col">
+              <div class="p-4 border-b border-slate-100 flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${badgeClass}">${eff.toUpperCase()}</span>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">${item.type}</span>
+                    ${isLS ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-600 text-white">${item.lifesaver}</span>` : ""}
+                  </div>
+                  <h3 class="font-bold text-slate-900 text-sm sm:text-base">Área: ${escapeHtml(item.area)}</h3>
+                </div>
+                <span class="text-[11px] text-slate-400 font-mono">${item.id}</span>
+              </div>
+
+              <div class="p-4 flex-1 space-y-3 text-xs sm:text-sm">
+                <p class="text-slate-700">${escapeHtml(item.description)}</p>
+
+                <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div><span class="text-slate-400 block">Responsable:</span><strong>${escapeHtml(item.responsible)}</strong></div>
+                  <div><span class="text-slate-400 block">Correo:</span><strong class="break-all">${escapeHtml(item.responsibleEmail)}</strong></div>
+                  <div><span class="text-slate-400 block">Apertura:</span><span>${new Date(item.createdAt).toLocaleString("es-CO")}</span></div>
+                  <div><span class="text-slate-400 block">Vencimiento SLA:</span><span class="${eff === "Vencido" ? "text-red-600 font-bold" : ""}">${new Date(item.dueDate).toLocaleString("es-CO")}</span></div>
+                </div>
+
+                <!-- Comparador Visual Antes vs Después -->
+                <div class="grid ${item.photoClose ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1">
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Antes (Apertura)</span>
+                    <img src="${item.photoOpen}" alt="Antes" class="w-full h-40 object-cover rounded-xl border border-slate-200" />
+                  </div>
+                  ${
+                    item.photoClose
+                      ? `<div>
+                          <span class="block text-[10px] font-bold uppercase text-emerald-700 mb-1">Después (Cierre)</span>
+                          <img src="${item.photoClose}" alt="Después" class="w-full h-40 object-cover rounded-xl border border-emerald-300" />
+                        </div>`
+                      : ""
+                  }
+                </div>
+
+                ${
+                  eff === "Cerrado"
+                    ? `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-1">
+                        <p class="font-bold text-emerald-900">Cerrado el ${new Date(item.closedAt).toLocaleString("es-CO")}</p>
+                        <p><strong>Causa Raíz:</strong> ${escapeHtml(item.rootCause || "")}</p>
+                        <p><strong>Acción Ejecutada:</strong> ${escapeHtml(item.closeComment || "")}</p>
+                      </div>`
+                    : `<div class="pt-2 flex justify-end no-print">
+                        <button onclick="openCloseModal('${item.id}')" class="px-4 py-2 rounded-xl bg-[#007A33] hover:bg-[#005A25] text-white text-xs font-bold shadow transition">
+                          Gestionar Cierre
+                        </button>
+                      </div>`
+                }
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    ["filter-search", "filter-status", "filter-type"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", renderDashboard);
+      document.getElementById(id).addEventListener("change", renderDashboard);
+    });
+
+    // ==================== CIERRE DE HALLAZGOS ====================
+    window.openCloseModal = function(id) {
+      document.getElementById("c-finding-id").value = id;
+      closePhotoBase64 = "";
+      document.getElementById("c-photo-close").value = "";
+      document.getElementById("c-photo-close-preview").classList.add("hidden");
+      document.getElementById("close-modal").classList.remove("hidden");
+    };
+
+    window.closeModal = function() {
+      document.getElementById("close-modal").classList.add("hidden");
+    };
+
+    document.getElementById("close-finding-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("c-finding-id").value;
+      const item = findingsMap[id];
+      if (!item) return;
+
+      const btn = document.getElementById("confirm-close-btn");
+      btn.disabled = true;
+      btn.textContent = "Cerrando...";
+
+      try {
+        const closedAt = new Date().toISOString();
+        const rootCause = document.getElementById("c-root-cause").value;
+        const closeComment = document.getElementById("c-comment").value.trim();
+
+        await update(ref(db, `findings/${id}`), {
+          status: "Cerrado",
+          closedAt,
+          rootCause,
+          closeComment,
+          photoClose: closePhotoBase64
+        });
+
+        const subject = encodeURIComponent(`[Cargill EHS - ${item.location}] Hallazgo Cerrado en ${item.area}`);
+        const body = encodeURIComponent(
+          `Hola ${item.responsible},\n\nSe confirma el cierre del hallazgo ${item.id}:\n` +
+          `• Localidad: ${item.location}\n` +
+          `• Área: ${item.area}\n` +
+          `• Causa Raíz: ${rootCause}\n` +
+          `• Acción Correctiva: ${closeComment}\n` +
+          `• Fecha de Cierre: ${new Date(closedAt).toLocaleString("es-CO")}\n\nFood Latam Caribe — Cargill EHS`
+        );
+        window.open(`mailto:${item.responsibleEmail}?subject=${subject}&body=${body}`, "_blank");
+
+        closeModal();
+      } catch (err) {
+        alert("Error al cerrar el hallazgo: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Confirmar Cierre y Notificar Responsable";
+      }
+    });
+
+    // ==================== ADMINISTRACIÓN DE USUARIOS (ADMIN) ====================
+    document.getElementById("user-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.username !== "Admin")) return;
+
+      const username = document.getElementById("u-username").value.trim();
+      const password = document.getElementById("u-password").value;
+      const fullName = document.getElementById("u-fullname").value.trim();
+      const location = document.getElementById("u-location").value;
+
+      if (!username || !password) return;
+
+      const isMaster = username === "Admin";
+      await set(ref(db, `users/${username}`), {
+        username,
+        password,
+        fullName,
+        location: isMaster ? "ALL" : location,
+        role: isMaster ? "ADMIN" : "USER",
+        active: true,
+        updatedAt: new Date().toISOString()
+      });
+
+      resetUserForm();
+    });
+
+    function resetUserForm() {
+      document.getElementById("user-form").reset();
+      document.getElementById("u-username").disabled = false;
+      document.getElementById("u-submit-btn").textContent = "Guardar Usuario";
+      document.getElementById("u-cancel-edit-btn").classList.add("hidden");
+    }
+
+    document.getElementById("u-cancel-edit-btn").addEventListener("click", resetUserForm);
+
+    window.editUserRow = function(username) {
+      const u = usersMap[username];
+      if (!u) return;
+      document.getElementById("u-username").value = u.username;
+      document.getElementById("u-username").disabled = true;
+      document.getElementById("u-password").value = u.password;
+      document.getElementById("u-fullname").value = u.fullName || "";
+      document.getElementById("u-location").value = u.location || "Incubadora Mahates";
+      document.getElementById("u-submit-btn").textContent = "Actualizar";
+      document.getElementById("u-cancel-edit-btn").classList.remove("hidden");
+    };
+
+    window.toggleUserActive = async function(username) {
+      if (username === "Admin") return;
+      const u = usersMap[username];
+      if (!u) return;
+      await update(ref(db, `users/${username}`), { active: u.active === false ? true : false });
+    };
+
+    window.deleteUserRow = async function(username) {
+      if (username === "Admin") return;
+      if (!confirm(`¿Eliminar definitivamente el usuario "${username}"?`)) return;
+      await remove(ref(db, `users/${username}`));
+    };
+
+    function renderUsersTable() {
+      const tbody = document.getElementById("users-table-body");
+      const list = Object.values(usersMap);
+      tbody.innerHTML = list
+        .map((u) => {
+          const isMaster = u.username === "Admin";
+          const isActive = u.active !== false;
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-4 font-bold text-slate-900">${escapeHtml(u.username)}</td>
+              <td class="py-3 px-4">${escapeHtml(u.fullName || "")}</td>
+              <td class="py-3 px-4 font-mono text-slate-600">${escapeHtml(u.password)}</td>
+              <td class="py-3 px-4 font-semibold">${u.location === "ALL" ? "Ambas Localidades" : escapeHtml(u.location)}</td>
+              <td class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}">
+                  ${isActive ? "ACTIVO" : "INACTIVO"}
+                </span>
+              </td>
+              <td class="py-3 px-4 text-right space-x-1.5">
+                <button onclick="editUserRow('${escapeHtml(u.username)}')" class="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold">Editar</button>
+                ${
+                  !isMaster
+                    ? `<button onclick="toggleUserActive('${escapeHtml(u.username)}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold">${isActive ? "Desactivar" : "Activar"}</button>
+                       <button onclick="deleteUserRow('${escapeHtml(u.username)}')" class="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-bold">Eliminar</button>`
+                    : ""
+                }
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+
+    // ==================== EXPORTACIÓN A EXCEL (.XLSX) ====================
+    document.getElementById("export-excel-btn").addEventListener("click", () => {
+      const rows = Object.values(findingsMap)
+        .filter((f) => f && f.location === activeLocation)
+        .map((f) => ({
+          ID: f.id,
+          Localidad: f.location,
+          Area: f.area,
+          Clasificacion_SLA: f.type,
+          Salvador_de_Vida: f.lifesaver,
+          Descripcion: f.description,
+          Responsable: f.responsible,
+          Correo_Responsable: f.responsibleEmail,
+          Estado: getEffectiveStatus(f),
+          Fecha_Apertura: new Date(f.createdAt).toLocaleString("es-CO"),
+          Fecha_Limite_SLA: new Date(f.dueDate).toLocaleString("es-CO"),
+          Fecha_Cierre: f.closedAt ? new Date(f.closedAt).toLocaleString("es-CO") : "",
+          Causa_Raiz: f.rootCause || "",
+          Accion_Correctiva: f.closeComment || ""
+        }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Hallazgos_EHS");
+      XLSX.writeFile(wb, `Cargill_EHS_${activeLocation.replace(/\s+/g, "_")}.xlsx`);
+    });
+
+    // ==================== ANALÍTICA CON CHART.JS ====================
+    function renderAnalytics() {
+      const items = Object.values(findingsMap).filter((f) => f && f.location === activeLocation);
+
+      const statusCounts = { Abierto: 0, Vencido: 0, Cerrado: 0 };
+      const typeCounts = { "Tipo A": 0, "Tipo B": 0, "Tipo C": 0 };
+      const lsCounts = {};
+
+      items.forEach((i) => {
+        const eff = getEffectiveStatus(i);
+        statusCounts[eff] = (statusCounts[eff] || 0) + 1;
+        typeCounts[i.type] = (typeCounts[i.type] || 0) + 1;
+        lsCounts[i.lifesaver] = (lsCounts[i.lifesaver] || 0) + 1;
+      });
+
+      if (charts.status) charts.status.destroy();
+      charts.status = new Chart(document.getElementById("chart-status"), {
+        type: "doughnut",
+        data: {
+          labels: Object.keys(statusCounts),
+          datasets: [{ data: Object.values(statusCounts), backgroundColor: ["#D97706", "#DC2626", "#007A33"] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      if (charts.type) charts.type.destroy();
+      charts.type = new Chart(document.getElementById("chart-type"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(typeCounts),
+          datasets: [{ label: "Hallazgos", data: Object.values(typeCounts), backgroundColor: ["#DC2626", "#D97706", "#0284C7"] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      if (charts.ls) charts.ls.destroy();
+      charts.ls = new Chart(document.getElementById("chart-lifesavers"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(lsCounts),
+          datasets: [{ label: "Cantidad", data: Object.values(lsCounts), backgroundColor: "#007A33" }]
+        },
+        options: { indexAxis: "y", responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>
